@@ -1,52 +1,52 @@
-# Estructura del Proyecto — Deserción Escolar Temprana Colombia
+# Project Structure — Early School Dropout in Colombia
 
-> **Maestría en Business Analytics** · Universidad del Rosario  
-> Autor: Juan Felipe Malaver   
-> Metodología: CRISP-DM · Periodo: 2018–2022
-
----
-
-## 1. Por qué hacemos lo que hacemos
-
-Colombia tiene una tasa de deserción escolar intra-anual que a nivel nacional ronda el 3–5% en el sector oficial, pero con variaciones territoriales extremas: municipios rurales, zonas de conflicto o con alta dispersión geográfica pueden superar el 20%. Cuando un estudiante abandona el sistema escolar durante el año, las Secretarías de Educación usualmente se enteran tarde, cuando la intervención ya no es posible, resultando en perdidas billonarias para el estado colombiano por mala asignación de recursos y miles de jovenes que seguiran dentro de la trampa de pobreza y no podran desarrollar todo su potencial para aportar a la sociedad en el futuro 
-
-El problema no es la falta de datos — el Estado colombiano registra matrícula, jornadas, niveles y poblaciones especiales a nivel de sede desde hace años a través del C-600 y el SIMAT. El problema es que esa información nunca se ha integrado en un sistema que permita **anticipar** el riesgo antes de que ocurra el abandono.
-
-Este proyecto construye ese sistema. El producto final es un **modelo de alerta temprana** que predice qué sedes educativas tienen mayor probabilidad de registrar deserción elevada el siguiente año, y por qué, permitiendo a las 97 Secretarías de Educación certificadas del país focalizar intervenciones de forma proactiva y eficiente permitiendo tanto predecir la deserción escolar como dar una recomendación de negocio para intervenir esa sede.
-
-Las tres preguntas que guían el trabajo son:
-
-1. ¿Qué sedes tienen mayor riesgo de deserción el próximo año?
-2. ¿Qué factores explican ese riesgo y en qué magnitud?
-3. ¿El modelo consolidado es igualmente preciso para sedes con poblaciones vulnerables (víctimas del conflicto, grupos étnicos, estudiantes con discapacidad)?
+> **Master’s in Business Analytics** · Universidad del Rosario  
+> Author: Juan Felipe Malaver  
+> Methodology: CRISP-DM · Period: 2018–2022
 
 ---
 
-## 2. Variable objetivo y qué queremos lograr
+## 1. Problem Statement & Motivation
 
-| Dimensión | Decisión |
+In Colombia, the intra-annual school dropout rate in the public sector averages between 3% and 5% nationally. However, regional disparities are extreme: rural municipalities, conflict zones, or areas with high geographical dispersion can experience dropout rates exceeding 20%. When students leave the school system mid-year, Secretariats of Education usually find out too late to intervene. This results in billions of pesos in lost public funds due to misallocated resources and leaves thousands of young people trapped in poverty, unable to reach their full potential or contribute to society.
+
+The issue is not a lack of data. The Colombian government has systematically recorded campus-level enrollment, schedules, educational levels, and special populations for years through the C-600 census and the SIMAT system. The real problem is that this information has never been integrated into a system capable of **anticipating** dropout risk before abandonment occurs.
+
+This project builds that predictive system. The final product is an **early warning model** that predicts which educational sites are at high risk of elevated dropout rates in the following year and identifies the underlying causes. This tool enables Colombia’s 97 Certified Secretariats of Education to target proactive interventions efficiently, combining predictive risk scoring with actionable, data-driven recommendations for site-level intervention.
+
+The three core research questions guiding this project are:
+
+1. Which educational sites face the highest risk of student dropout next year?
+2. Which factors explain this risk, and to what extent?
+3. Is the consolidated model equally accurate for school sites serving vulnerable populations (victims of armed conflict, ethnic minorities, students with disabilities)?
+
+---
+
+## 2. Target Variable & Project Scope
+
+| Dimension | Decision |
 |---|---|
-| **Unidad de análisis** | Sede educativa × año (`SEDE_CODIGO` × `PERIODO_ANIO`) |
-| **Variable objetivo** | Tasa de deserción intra-anual municipal imputada a cada sede |
-| **Tipo de problema** | Clasificación binaria (alto / bajo riesgo) — umbral a definir con el asesor |
-| **Ventana de entrenamiento** | 2018–2022 |
-| **Validación out-of-time** | 2023–2024 (datos reservados, no tocar hasta evaluación final) |
-| **Algoritmos candidatos** | Regresión Logística (baseline) · Random Forest · XGBoost/LightGBM |
+| **Unit of Analysis** | Educational site × year (`SEDE_CODIGO` × `PERIODO_ANIO`) |
+| **Target Variable** | Municipal intra-annual dropout rate imputed to each school site |
+| **Problem Type** | Binary classification (High / Low Risk) — threshold to be defined with the advisor |
+| **Training Window** | 2018–2022 |
+| **Out-of-Time Validation** | 2023–2024 (holdout dataset, untouched until final evaluation) |
+| **Candidate Algorithms** | Logistic Regression (baseline) · Random Forest · XGBoost / LightGBM |
 
-La variable objetivo no existe directamente a nivel de sede: el SIMAT publica deserción solo a nivel municipal. La estrategia es **imputación por homoscedasticia**: asignar la tasa municipal a todas las sedes del mismo municipio y año, asumiendo que las condiciones del municipio afectan por igual a sus sedes. Este supuesto se documenta como limitación en la tesis.
+The target variable is not directly available at the site level, as SIMAT only publishes dropout rates aggregated at the municipal level. To address this, the project applies **homoscedastic imputation**: assigning the municipal rate to all educational sites within the same municipality and year, assuming municipal-level conditions impact all local sites uniformly. This assumption is documented as a project limitation.
 
-Lo que queremos lograr al final no es solo un número de AUC: es un **ranking accionable de sedes por riesgo** que un funcionario de una Secretaría pueda leer, entender y usar para decidir dónde intervenir primero, con una explicación en lenguaje natural de por qué esa sede está en riesgo.
+The ultimate goal goes beyond optimizing predictive metrics like AUC; it aims to generate an **actionable site risk ranking**. Education officials can easily interpret this ranking to prioritize interventions, supported by natural language explanations detailing why a specific site is at risk.
 
 ---
 
-## 3. De dónde salen los datos
+## 3. Data Architecture & Sources
 
-### Estructura de carpetas
+### Folder Structure
 
 ```
 Data/
-├── Raw/                          # Datos originales — nunca editar directamente
-│   ├── C-600/                    # Censo de Educación Formal (DANE) — nivel sede
+├── Raw/                                # Original raw data — never edit directly
+│   ├── C-600/                          # Formal Education Census (DANE) — site level
 │   │   ├── 2018/
 │   │   │   ├── Desplazados_2018.csv
 │   │   │   ├── Limitacion_fisica_2018.csv
@@ -54,24 +54,24 @@ Data/
 │   │   │   ├── Ed_Flexible_2018.csv
 │   │   │   ├── Jornadas_nivel_2018.csv
 │   │   │   └── Etnia_2018.csv
-│   │   ├── 2019/ … 2022/         # misma estructura por año
-│   ├── SIMAT/                    # Tasas municipales (MEN)
+│   │   ├── 2019/ … 2022/              # Same annual directory structure
+│   ├── SIMAT/                          # Municipal rates (MEN)
 │   │   ├── Tasa_Desercion_intra_Departamentos.xlsx
 │   │   ├── Tasa_repitencia_intra_Departamentos.xlsx
-│   │   └── DIVIPOLA.csv          # Tabla nombre municipio → código DANE
-│   ├── IPM/                      # Pobreza multidimensional (DANE-ECV)
+│   │   └── DIVIPOLA.csv               # Lookup table: Municipality name → DANE code
+│   ├── IPM/                            # Multidimensional Poverty Index (DANE-ECV)
 │   │   ├── IPM_Hogares_2018.csv
 │   │   ├── IPM_Hogares_2019.csv
 │   │   ├── IPM_Hogares_2020.csv
 │   │   ├── IPM_Hogares_2021.csv
 │   │   └── IPM_Hogares_2022.csv
-│   └── Enrichment/               # Fuentes territoriales adicionales — todos los años disponibles
-│       ├── Icfes_Resumen.csv             #  listo — nivel sede × año
-│       ├── PDET_municipios.xlsx          #  listo — 170 municipios con COD DANE
-│       ├── ZOMAC_municipios.xlsx         #  listo — 344 municipios con COD DANE
-│       ├── Terridata_completo.csv        #  listo — panel municipal multi-indicador (DNP)
-│       └── Distancia_capital_mpio.csv    #  pendiente desde los crudos — se calcula con GeoPandas
-├── Processed/                    # Outputs del pipeline (generados por código)
+│   └── Enrichment/                     # Additional territorial features — all available years
+│       ├── Icfes_Resumen.csv           # Ready — site level × year
+│       ├── PDET_municipios.xlsx        # Ready — 170 municipalities with DANE code
+│       ├── ZOMAC_municipios.xlsx       # Ready — 344 municipalities with DANE code
+│       ├── Terridata_completo.csv      # Ready — multi-indicator municipal panel (DNP)
+│       └── Distancia_capital_mpio.csv  # Pending extraction from raw files via GeoPandas
+├── Processed/                          # Pipeline outputs (generated programmatically)
 │   ├── panel_maestro.parquet
 │   ├── panel_maestro.csv
 │   └── diagnostico_panel.xlsx
@@ -81,78 +81,78 @@ Data/
 
 ---
 
-### Fuente 1 — C-600 DANE (nivel sede)
+### Source 1 — DANE C-600 Census (Site Level)
 
-**Qué es:** El formulario C-600 (Encuesta de Educación Formal) es el censo anual de matrícula que el DANE levanta en todas las sedes del país. Es la fuente más granular del proyecto y el origen de los predictores principales del modelo.
+**Description:** The C-600 form (Formal Education Survey) is DANE's annual enrollment census covering every educational site in Colombia. It serves as the primary predictor source and the most granular dataset in this project.
 
-**Cómo se descargó:** Portal de microdatos del DANE. Encoding `latin1`, separador coma.
+**Extraction Method:** Downloaded from DANE's microdata portal (`latin1` encoding, comma-separated).
 
-**Nota técnica crítica:** `SEDE_CODIGO` llega en notación científica desde Excel (ej. `2.05212E+11`). Siempre leer como `string` y rellenar a 12 dígitos con `zfill(12)`. Los primeros 5 dígitos son el código DANE del municipio — llave de cruce con el SIMAT.
+**Critical Technical Note:** `SEDE_CODIGO` is often parsed in scientific notation by Excel (e.g., `2.05212E+11`). It must always be imported as a string and zero-padded to 12 digits using `zfill(12)`. The first 5 digits represent the municipal DANE code, which serves as the merge key for SIMAT datasets.
 
-| Archivo | Población que describe | Columnas de conteo |
+| File | Target Population | Count Columns |
 |---|---|---|
-| `Desplazados_YYYY.csv` | Alumnos víctimas del conflicto armado | `JORNDES_CANTIDAD_HOMBRE/MUJER` |
-| `Limitacion_fisica_YYYY.csv` | Alumnos con discapacidad | `JORNLIM_CANTIDAD_HOMBRE/MUJER` |
-| `Ed_tradicional_YYYY.csv` | Matrícula en aulas regulares por grado y edad | `JORNTRA_CANTIDAD_HOMBRE/MUJER` |
-| `Ed_Flexible_YYYY.csv` | Matrícula en modelos flexibles (Escuela Nueva, CLEI…) | `JORNMOD_CANTIDAD_HOMBRE/MUJER` |
-| `Jornadas_nivel_YYYY.csv` | **Total de alumnos por sede** — esqueleto del panel | `SEDEALUM_CANTIDAD` |
-| `Etnia_YYYY.csv` | Alumnos pertenecientes a grupos étnicos | `JORNETN_CANTIDAD_HOMBRE/MUJER` |
+| `Desplazados_YYYY.csv` | Students impacted by armed conflict | `JORNDES_CANTIDAD_HOMBRE/MUJER` |
+| `Limitacion_fisica_YYYY.csv` | Students with physical or cognitive disabilities | `JORNLIM_CANTIDAD_HOMBRE/MUJER` |
+| `Ed_tradicional_YYYY.csv` | Regular classroom enrollment by grade and age | `JORNTRA_CANTIDAD_HOMBRE/MUJER` |
+| `Ed_Flexible_YYYY.csv` | Enrollment in flexible education models (Escuela Nueva, CLEI, etc.) | `JORNMOD_CANTIDAD_HOMBRE/MUJER` |
+| `Jornadas_nivel_YYYY.csv` | **Total student count per site** — core panel backbone | `SEDEALUM_CANTIDAD` |
+| `Etnia_YYYY.csv` | Students belonging to recognized ethnic groups | `JORNETN_CANTIDAD_HOMBRE/MUJER` |
 
-Todos comparten las columnas: `SEDE_CODIGO`, `PERIODO_ANIO`, `JORNADA_NOMBRE`, `NIVELENSE_NOMBRE`, más columnas técnicas con IDs redundantes (`_ID`, `_CODIGO`) que no se usan en el modelo.
+All files share the key identifiers: `SEDE_CODIGO`, `PERIODO_ANIO`, `JORNADA_NOMBRE`, and `NIVELENSE_NOMBRE`. Technical columns containing redundant identifiers (`_ID`, `_CODIGO`) are removed prior to modeling.
 
 ---
 
-### Fuente 2 — SIMAT MEN (nivel municipal)
+### Source 2 — MEN SIMAT System (Municipal Level)
 
-**Qué es:** Tasas de deserción y repitencia intra-anual del MEN. El proyecto usa exclusivamente `TERRITORIO = MUNICIPIO` y `SECTOR = Oficial`. Un archivo Excel por indicador con todos los años (2015–2024).
+**Description:** Contains intra-annual dropout and grade repetition rates published by the Ministry of National Education (MEN). The pipeline filters exclusively for `TERRITORIO = MUNICIPIO` and `SECTOR = Oficial`. Includes one Excel file per indicator covering 2015–2024.
 
-**Cómo se descargó:** Portal BI del MEN, indicador 22.
+**Extraction Method:** Extracted from the MEN Business Intelligence portal (Indicator 22).
 
-| Archivo | Variable | Columnas clave |
+| File | Target Variable | Key Columns |
 |---|---|---|
-| `Tasa_Desercion_intra_Departamentos.xlsx` | Tasa de deserción | `AÑO`, `MUNICIPIO`, `DEPARTAMENTO`, `SECTOR`, `NIVEL EDUCATIVO`, `DESERTORES`, `TOTAL`, `TASA` |
-| `Tasa_repitencia_intra_Departamentos.xlsx` | Tasa de repitencia | Igual, `DESERTORES` → `REPITENTES` |
+| `Tasa_Desercion_intra_Departamentos.xlsx` | Intra-annual dropout rate | `AÑO`, `MUNICIPIO`, `DEPARTAMENTO`, `SECTOR`, `NIVEL EDUCATIVO`, `DESERTORES`, `TOTAL`, `TASA` |
+| `Tasa_repitencia_intra_Departamentos.xlsx` | Intra-annual repetition rate | Identical structure (`DESERTORES` replaced by `REPITENTES`) |
 
-`TASA` es `NaN` cuando `TOTAL = 0`: indefinición matemática, no dato faltante. Se filtra antes de modelar.
+`TASA` evaluates to `NaN` when `TOTAL = 0` due to mathematical division by zero rather than missing data. These instances are filtered out prior to training.
 
 ---
 
-### Fuente 3 — IPM DANE (nivel hogar, agregable a región)
+### Source 3 — DANE Multidimensional Poverty Index (Household / Regional Level)
 
-**Qué es:** Microdatos de la Encuesta Nacional de Calidad de Vida (ECV) para el cálculo del IPM. Un archivo por año (2018–2022), separador punto y coma.
+**Description:** Microdata from the Quality of Life Survey (ECV) used to compute the Multidimensional Poverty Index (IPM). Contains annual semicolon-separated files from 2018 to 2022.
 
-**Restricción:** La única variable geográfica es `region` (9 regiones DANE). Se incorpora al panel como contexto regional, no municipal.
+**Geographic Constraint:** The finest geographic granularity available is `region` (9 DANE macro-regions). It is integrated into the master panel as regional context rather than municipal-level data.
 
-| Variable | Descripción |
+| Variable | Description |
 |---|---|
-| `ipm` | Índice del hogar (0–1). Pobre si ≥ 0.333 |
-| `inasistencia_escolar` | Privación por inasistencia — directamente relacionada con deserción |
-| `rezago_escolar` | Privación por rezago — predictor documentado de deserción |
-| `trabajo_infantil` | Factor de riesgo de abandono escolar |
-| `fex_c` | Factor de expansión por hogar |
-| `region` | 1=Caribe · 2=Oriental · 3=Central · 4=Bogotá · 5=Antioquia · 6=Valle · 7=Pacífica · 8=Orinoquía-Amazonía · 9=San Andrés |
+| `ipm` | Household poverty index (0–1). Classified as poor if ≥ 0.333 |
+| `inasistencia_escolar` | Deprivation due to school non-attendance — directly correlated with dropout rates |
+| `rezago_escolar` | Deprivation due to educational lag — a documented dropout predictor |
+| `trabajo_infantil` | Child labor deprivation — major risk factor for school abandonment |
+| `fex_c` | Household sampling weight factor |
+| `region` | 1=Caribbean · 2=Eastern · 3=Central · 4=Bogotá · 5=Antioquia · 6=Valle · 7=Pacific · 8=Orinoquía-Amazonía · 9=San Andrés |
 
 ---
 
-### Fuente 4 — Enriquecimiento territorial (pendiente de descarga)
+### Source 4 — Territorial Context & Enrichment Features
 
-Variables solicitadas por el asesor. Todas se cruzan por `cod_mpio_dane` (código DANE de 5 dígitos).
+External datasets integrated via `cod_mpio_dane` (5-digit municipal DANE code).
 
-| Variable | Archivo | Fuente | Llave de cruce | Estado |
+| Variable | File | Source | Join Key | Status |
 |---|---|---|---|---|
-| Resultados ICFES Saber 11° por sede | `Icfes_Resumen.csv` | DataIcfes | `cole_cod_dane_sede` × `anio` | ✅ |
-| Clasificación PDET (170 municipios) | `PDET_municipios.xlsx` | ART | `COD DANE` (5 dígitos) | ✅ |
-| Clasificación ZOMAC (344 municipios) | `ZOMAC_municipios.xlsx` | DIAN | `COD DANE` (5 dígitos) | ✅ |
-| PIB, población y otros indicadores municipales | `Terridata_completo.csv` | DNP Terridata | `Codigo_Entidad` × `Anio` | ✅ |
-| Distancia a capital departamental (km) | `Distancia_capital_mpio.csv` | Shapefile MGNCNPV — DANE | `cod_mpio_dane` | ⏳ |
+| ICFES Saber 11° exam results by site | `Icfes_Resumen.csv` | DataIcfes | `cole_cod_dane_sede` × `anio` | ✅ Ready |
+| PDET status (170 priority municipalities) | `PDET_municipios.xlsx` | ART | `COD DANE` (5 digits) | ✅ Ready |
+| ZOMAC status (344 conflict-affected areas) | `ZOMAC_municipios.xlsx` | DIAN | `COD DANE` (5 digits) | ✅ Ready |
+| Municipal GDP, population & socio-demographics | `Terridata_completo.csv` | DNP Terridata | `Codigo_Entidad` × `Anio` | ✅ Ready |
+| Distance to departmental capital (km) | `Distancia_capital_mpio.csv` | DANE MGNCNPV Shapefile | `cod_mpio_dane` | ⏳ Pending |
 
-**Variables del ICFES agregadas por sede y año:**
+**ICFES Variables Aggregated by Educational Site & Year:**
 
-| Variable | Descripción |
+| Variable | Description |
 |---|---|
-| `cole_cod_dane_sede` | Código DANE de la sede — llave directa de cruce con `SEDE_CODIGO` del C-600 |
-| `cant_estudiantes` | Número de estudiantes que presentaron Saber 11° en esa sede y año |
-| `prom_punt_global` | Puntaje global promedio (proxy de calidad académica de la sede) |
-| `pct_desplazacolegio` | % de estudiantes que se desplazan para llegar al colegio |
-| `pct_horastrabnoremu` | % de estudiantes con horas de trabajo no remunerado (proxy de trabajo infantil) |
-| `pct_fami_tieneinternet` | % de familias con acceso a internet (proxy de conectividad y NSE) |
+| `cole_cod_dane_sede` | Educational site DANE code — direct join key with C-600 `SEDE_CODIGO` |
+| `cant_estudiantes` | Number of students taking the Saber 11° exam at that site in a given year |
+| `prom_punt_global` | Mean overall test score (proxy for academic quality) |
+| `pct_desplazacolegio` | % of students commuting to reach their school campus |
+| `pct_horastrabnoremu` | % of students working unpaid hours (proxy for child labor) |
+| `pct_fami_tieneinternet` | % of households with internet access (proxy for digital connectivity and SES) |
