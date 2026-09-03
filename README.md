@@ -40,37 +40,44 @@ The ultimate goal goes beyond optimizing predictive metrics like AUC; it aims to
 
 ---
 
-## 3. Data Architecture & Sources
+```mermaid
+graph TD
+    classDef root fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f8fafc,font-weight:bold
+    classDef rawGroup fill:#0f172a,stroke:#38bdf8,stroke-width:1px,color:#e2e8f0
+    classDef procGroup fill:#0f172a,stroke:#34d399,stroke-width:1px,color:#e2e8f0
+    classDef extGroup fill:#0f172a,stroke:#fbbf24,stroke-width:1px,color:#e2e8f0
+    classDef nodeBox fill:#1e293b,stroke:#334155,color:#cbd5e1
 
-### Folder Structure
+    DATA["📁 Data /"] ::: root
 
-Data/
-├── Raw/                                # Original raw data — never edit directly[cite: 1]
-│   ├── C-600/                          # Formal Education Census (DANE) — site level[cite: 1]
-│   │   ├── 2018/ … 2023/               # Annual directory structure (2018–2023)[cite: 1]
-│   │   │   ├── Desplazados_YYYY.csv[cite: 1]
-│   │   │   ├── Limitacion_fisica_YYYY.csv[cite: 1]
-│   │   │   ├── Ed_tradicional_YYYY.csv[cite: 1]
-│   │   │   ├── Ed_Flexible_YYYY.csv[cite: 1]
-│   │   │   ├── Jornadas_nivel_YYYY.csv[cite: 1]
-│   │   │   └── Etnia_YYYY.csv[cite: 1]
-│   ├── SIMAT/                          # Municipal rates (MEN)[cite: 1]
-│   │   ├── Tasa_Desercion_intra_Departamentos.xlsx[cite: 1]
-│   │   ├── Tasa_repitencia_intra_Departamentos.xlsx[cite: 1]
-│   │   └── DIVIPOLA.csv               # Lookup table: Municipality name → DANE code[cite: 1]
-│   ├── IPM/                            # Multidimensional Poverty Index (DANE-ECV / Terridata)[cite: 1]
-│   │   └── IPM_Hogares_YYYY.csv[cite: 1]
-│   └── Enrichment/                     # Additional territorial features — all available years[cite: 1]
-│       ├── Icfes_Resumen.csv           # Ready — site level × year[cite: 1]
-│       ├── PDET_municipios.xlsx        # Ready — 170 municipalities with DANE code[cite: 1]
-│       ├── ZOMAC_municipios.xlsx       # Ready — 344 municipalities with DANE code[cite: 1]
-│       └── Terridata_completo.csv      # Ready — multi-indicator municipal panel (DNP)[cite: 1]
-├── Processed/                          # Pipeline outputs (generated programmatically)[cite: 1]
-│   ├── panel_maestro.parquet[cite: 1]
-│   ├── panel_maestro.csv[cite: 1]
-│   └── Diccionario_de_Datos_Panel_Maestro.xlsx[cite: 1]
-└── External/
-└── DIVIPOLA_referencia.csv[cite: 1]
+    subgraph RAW ["📁 Raw / (Datos Originales - Solo Lectura)"]
+        direction TB
+        C600["📂 C-600 / (Censo DANE)<br/> └─ 2018–2023/<br/> &nbsp;&nbsp;&nbsp;&nbsp;├─ Desplazados_YYYY.csv<br/> &nbsp;&nbsp;&nbsp;&nbsp;├─ Limitacion_fisica_YYYY.csv<br/> &nbsp;&nbsp;&nbsp;&nbsp;├─ Ed_tradicional_YYYY.csv<br/> &nbsp;&nbsp;&nbsp;&nbsp;├─ Ed_Flexible_YYYY.csv<br/> &nbsp;&nbsp;&nbsp;&nbsp;├─ Jornadas_nivel_YYYY.csv<br/> &nbsp;&nbsp;&nbsp;&nbsp;└─ Etnia_YYYY.csv"] ::: nodeBox
+        
+        SIMAT["📂 SIMAT / (Tasas MEN)<br/> ├─ Tasa_Desercion_intra.xlsx<br/> ├─ Tasa_repitencia_intra.xlsx<br/> └─ DIVIPOLA.csv"] ::: nodeBox
+        
+        IPM["📂 IPM / (Pobreza Multidimensional)<br/> └─ IPM_Hogares_YYYY.csv"] ::: nodeBox
+        
+        ENRICH["📂 Enrichment / (Atributos Territoriales)<br/> ├─ Icfes_Resumen.csv<br/> ├─ PDET_municipios.xlsx<br/> ├─ ZOMAC_municipios.xlsx<br/> └─ Terridata_completo.csv"] ::: nodeBox
+    end
+
+    subgraph PROC ["📁 Processed / (Salidas del Pipeline)"]
+        direction TB
+        PROCDETAIL["📄 panel_maestro.parquet<br/>📄 panel_maestro.csv<br/>📄 Diccionario_de_Datos_Panel_Maestro.xlsx"] ::: nodeBox
+    end
+
+    subgraph EXT ["📁 External / (Tablas de Referencia)"]
+        direction TB
+        EXTDETAIL["📄 DIVIPOLA_referencia.csv"] ::: nodeBox
+    end
+
+    DATA --> RAW
+    DATA --> PROC
+    DATA --> EXT
+
+    class RAW rawGroup
+    class PROC procGroup
+    class EXT extGroup
 
 
 
