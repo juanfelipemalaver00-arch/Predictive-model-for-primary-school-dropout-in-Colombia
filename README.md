@@ -40,45 +40,47 @@ The ultimate goal goes beyond optimizing predictive metrics like AUC; it aims to
 
 ---
 
-```mermaid
 graph TD
-    classDef root fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f8fafc,font-weight:bold
-    classDef rawGroup fill:#0f172a,stroke:#38bdf8,stroke-width:1px,color:#e2e8f0
-    classDef procGroup fill:#0f172a,stroke:#34d399,stroke-width:1px,color:#e2e8f0
-    classDef extGroup fill:#0f172a,stroke:#fbbf24,stroke-width:1px,color:#e2e8f0
-    classDef nodeBox fill:#1e293b,stroke:#334155,color:#cbd5e1
-
-    DATA["📁 Data /"] ::: root
+    DATA["📁 Data /"]
 
     subgraph RAW ["📁 Raw / (Datos Originales - Solo Lectura)"]
         direction TB
-        C600["📂 C-600 / (Censo DANE)<br/> └─ 2018–2023/<br/> &nbsp;&nbsp;&nbsp;&nbsp;├─ Desplazados_YYYY.csv<br/> &nbsp;&nbsp;&nbsp;&nbsp;├─ Limitacion_fisica_YYYY.csv<br/> &nbsp;&nbsp;&nbsp;&nbsp;├─ Ed_tradicional_YYYY.csv<br/> &nbsp;&nbsp;&nbsp;&nbsp;├─ Ed_Flexible_YYYY.csv<br/> &nbsp;&nbsp;&nbsp;&nbsp;├─ Jornadas_nivel_YYYY.csv<br/> &nbsp;&nbsp;&nbsp;&nbsp;└─ Etnia_YYYY.csv"] ::: nodeBox
+        C600["📂 C-600 / (Censo DANE)<br/>└─ 2018–2023/<br/>   ├─ Desplazados_YYYY.csv<br/>   ├─ Limitacion_fisica_YYYY.csv<br/>   ├─ Ed_tradicional_YYYY.csv<br/>   ├─ Ed_Flexible_YYYY.csv<br/>   ├─ Jornadas_nivel_YYYY.csv<br/>   └─ Etnia_YYYY.csv"]
         
-        SIMAT["📂 SIMAT / (Tasas MEN)<br/> ├─ Tasa_Desercion_intra.xlsx<br/> ├─ Tasa_repitencia_intra.xlsx<br/> └─ DIVIPOLA.csv"] ::: nodeBox
+        SIMAT["📂 SIMAT / (Tasas MEN)<br/>├─ Tasa_Desercion_intra.xlsx<br/>├─ Tasa_repitencia_intra.xlsx<br/>└─ DIVIPOLA.csv"]
         
-        IPM["📂 IPM / (Pobreza Multidimensional)<br/> └─ IPM_Hogares_YYYY.csv"] ::: nodeBox
+        IPM["📂 IPM / (Pobreza Multidimensional)<br/>└─ IPM_Hogares_YYYY.csv"]
         
-        ENRICH["📂 Enrichment / (Atributos Territoriales)<br/> ├─ Icfes_Resumen.csv<br/> ├─ PDET_municipios.xlsx<br/> ├─ ZOMAC_municipios.xlsx<br/> └─ Terridata_completo.csv"] ::: nodeBox
+        ENRICH["📂 Enrichment / (Atributos Territoriales)<br/>├─ Icfes_Resumen.csv<br/>├─ PDET_municipios.xlsx<br/>├─ ZOMAC_municipios.xlsx<br/>└─ Terridata_completo.csv"]
     end
 
     subgraph PROC ["📁 Processed / (Salidas del Pipeline)"]
         direction TB
-        PROCDETAIL["📄 panel_maestro.parquet<br/>📄 panel_maestro.csv<br/>📄 Diccionario_de_Datos_Panel_Maestro.xlsx"] ::: nodeBox
+        PROCDETAIL["📄 panel_maestro.parquet<br/>📄 panel_maestro.csv<br/>📄 Diccionario_de_Datos_Panel_Maestro.xlsx"]
     end
 
     subgraph EXT ["📁 External / (Tablas de Referencia)"]
         direction TB
-        EXTDETAIL["📄 DIVIPOLA_referencia.csv"] ::: nodeBox
+        EXTDETAIL["📄 DIVIPOLA_referencia.csv"]
     end
 
     DATA --> RAW
     DATA --> PROC
     DATA --> EXT
 
-    class RAW rawGroup
-    class PROC procGroup
-    class EXT extGroup
+    %% Clases de Estilo
+    classDef root fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f8fafc,font-weight:bold;
+    classDef rawGroup fill:#0f172a,stroke:#38bdf8,stroke-width:1px,color:#e2e8f0;
+    classDef procGroup fill:#0f172a,stroke:#34d399,stroke-width:1px,color:#e2e8f0;
+    classDef extGroup fill:#0f172a,stroke:#fbbf24,stroke-width:1px,color:#e2e8f0;
+    classDef nodeBox fill:#1e293b,stroke:#334155,color:#cbd5e1;
 
+    %% Aplicación de estilos
+    class DATA root;
+    class RAW rawGroup;
+    class PROC procGroup;
+    class EXT extGroup;
+    class C600,SIMAT,IPM,ENRICH,PROCDETAIL,EXTDETAIL nodeBox;
 
 
 ---
