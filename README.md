@@ -39,7 +39,7 @@ The target variable is not directly available at the site level, as SIMAT only p
 The ultimate goal goes beyond optimizing predictive metrics like AUC; it aims to generate an **actionable site risk ranking**[cite: 1]. Education officials can easily interpret this ranking to prioritize interventions, supported by natural language explanations detailing why a specific site is at risk[cite: 1].
 
 ---
-
+```mermaid
 graph TD
     DATA["📁 Data /"]
 
@@ -81,7 +81,7 @@ graph TD
     class PROC procGroup;
     class EXT extGroup;
     class C600,SIMAT,IPM,ENRICH,PROCDETAIL,EXTDETAIL nodeBox;
-
+```
 
 ---
 
