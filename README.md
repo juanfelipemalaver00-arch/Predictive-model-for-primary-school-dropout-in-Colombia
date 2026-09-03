@@ -72,19 +72,7 @@ Data/
 └── External/
 └── DIVIPOLA_referencia.csv[cite: 1]
 
----
 
-### Official Data Sources & Direct Links
-
-| Source / Dataset | Entity | Official URL / Access Link | Description & Availability Notes |
-|---|---|---|---|
-| **DANE C-600 (Educación Formal)** | DANE | https://microdatos.dane.gov.co/index.php/catalog/834/get-microdata | Primary site-level census covering demographics, vulnerability, and educational models (2018–2023). |
-| **MEN SINEB (Deserción y Repitencia)** | Mineducación | http://bi.mineducacion.gov.co:8380/eportal/web/sineb/22.-tasa-de-desercion-intra-anual | Municipal intra-annual dropout and repetition rates. Data currently covers up to 2023. |
-| **DataIcfes (Saber 11°)** | ICFES | https://bitly.ws/3f3YC | Site-level academic results, socio-economic index (INSE), connectivity, and student travel metrics. |
-| **Terridata & IPM 2024** | DNP / DANE | https://www.datos.gov.co/dataset/Indice-de-Pobreza-Multidimensional-IPM-2024/ntk3-fdqa/about_data | Municipal Multidimensional Poverty Index (IPM) dimensions (school non-attendance, child labor, housing, etc.). |
-| **Municipios PDET** | ART / FINAGRO | https://www.finagro.com.co/sites/default/files/documents/2022-02/ANEXO%20MUNICIPIOS%20PDET.xlsx | List of 170 priority Development Programs with a Territorial Focus municipalities. |
-| **Municipios ZOMAC** | MinHacienda / FINAGRO | https://www.finagro.com.co/sites/default/files/documents/2022-02/ANEXO%20MUNICIPIOS%20ZOMAC.xlsx | List of 344 conflict-affected municipalities. |
-| **DIVIPOLA** | DANE / Datos Abiertos | https://www.datos.gov.co/api/views/gdxc-w37w/rows.csv?accessType=DOWNLOAD | Standardized geographic coding for Colombian municipalities (5-digit) and departments (2-digit). |
 
 ---
 
