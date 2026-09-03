@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Education Data Integration — Crosswalk & Join Architecture</title>
+<style>
+:root{
+  --ink:#17202a; --muted:#5d6b78; --line:#d9e1e7; --bg:#f5f7f9;
+  --card:#fff; --accent:#1f5f8b; --accent2:#4d8fbd; --soft:#eaf3f8;
+  --good:#2e7d5b; --warn:#a56a00;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.55}
+.container{max-width:1200px;margin:auto;padding:36px 24px 60px}
+.hero{background:linear-gradient(135deg,#173f5f,#245f86);color:white;border-radius:18px;padding:42px 44px;margin-bottom:26px}
+.hero h1{margin:0 0 10px;font-size:34px;letter-spacing:-.5px}
+.hero p{margin:7px 0;max-width:900px;color:#e8f1f6}
+.badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.badge{border:1px solid rgba(255,255,255,.28);padding:6px 10px;border-radius:999px;font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px;margin:18px 0;box-shadow:0 2px 10px rgba(23,32,42,.035)}
+h2{font-size:24px;margin:0 0 14px}
+h3{font-size:18px;margin:22px 0 8px;color:var(--accent)}
+p{margin:8px 0}
+.small{font-size:13px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.stat{background:var(--soft);border-radius:12px;padding:18px}
+.stat strong{display:block;font-size:22px;color:var(--accent)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#eef3f6;color:#29465b}
+code{background:#eef2f4;padding:2px 5px;border-radius:4px;font-size:.92em}
+.flow{overflow:auto;padding:8px 0 18px}
+svg{min-width:1000px;width:100%;height:auto}
+.node{fill:#fff;stroke:#356b8d;stroke-width:2}
+.node.master{fill:#eaf3f8;stroke:#1f5f8b}
+.node.ext{fill:#f7f8fa;stroke:#7c8994}
+.edge{stroke:#72808b;stroke-width:2;fill:none}
+.edge.key{stroke:#1f5f8b;stroke-width:3}
+.edge.enrich{stroke:#4d8fbd;stroke-width:2.5;stroke-dasharray:7 5}
+.label{font-size:15px;font-weight:600;fill:#17202a}
+.sub{font-size:12px;fill:#5d6b78}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:8px}
+.legend span{display:flex;align-items:center;gap:6px}
+.dot{width:13px;height:13px;border-radius:3px;display:inline-block;border:1px solid #777}
+.dot.master{background:#eaf3f8;border-color:#1f5f8b}
+.dot.ext{background:#f7f8fa;border-color:#7c8994}
+.dot.enrich{background:#fff;border:2px dashed #4d8fbd}
+.callout{border-left:4px solid var(--accent);background:#f1f6f9;padding:14px 16px;border-radius:0 8px 8px 0;margin:14px 0}
+.warn{border-left-color:var(--warn);background:#fff8eb}
+ul{margin-top:8px}
+.section-nav{position:sticky;top:0;background:rgba(245,247,249,.94);backdrop-filter:blur(8px);padding:10px 0;z-index:5;border-bottom:1px solid var(--line)}
+.section-nav a{margin-right:16px;color:var(--accent);text-decoration:none;font-size:13px}
+footer{color:var(--muted);font-size:12px;margin-top:28px}
+@media(max-width:800px){.grid{grid-template-columns:1fr}.hero{padding:30px 24px}.hero h1{font-size:28px}}
+</style>
+</head>
+<body>
+<div class="container">
+<section class="hero">
+  <h1>Education Data Integration: Crosswalk & Join Architecture</h1>
+  <p>A technical overview of how the final school-year panel is constructed, which databases are crossed, the keys used at each stage, and how information flows into the final analytical dataset.</p>
+  <div class="badges">
+    <span class="badge">Panel period: 2018–2023</span>
+    <span class="badge">Training: 2018–2022</span>
+    <span class="badge">Test: 2023</span>
+    <span class="badge">Core unit: school site × year</span>
+  </div>
+</section>
+
+<nav class="section-nav">
+  <a href="#architecture">Architecture</a>
+  <a href="#joins">Join map</a>
+  <a href="#sources">Sources</a>
+  <a href="#keys">Keys</a>
+  <a href="#features">Derived features</a>
+  <a href="#validation">Validation</a>
+</nav>
+
+<section class="card" id="architecture">
+<h2>1. Executive overview</h2>
+<p>The pipeline builds a longitudinal <strong>school-site × year</strong> master panel. The backbone is created from C-600 “Jornada/Nivel” information and uses <code>SEDE_CODIGO × PERIODO_ANIO</code> as the primary key. The remaining C-600 modules are attached horizontally using the same school-site/year key.</p>
+<p>Municipality-level educational outcomes from SIMAT are first standardized and aggregated at the municipality-year level. <strong>DIVIPOLA</strong> acts as the geographic crosswalk that converts standardized municipality and department names into the official five-digit DANE municipality code. Those SIMAT indicators are then merged into the school panel through <code>COD_MPIO_DANE × PERIODO_ANIO</code>.</p>
+<p>IPM is integrated at the <strong>region × year</strong> level, while PDET and ZOMAC are municipality-level enrichment flags. ICFES is integrated using a two-step strategy: a direct <strong>school-site × year</strong> match first, followed by an establishment-level rescue for observations that remain unmatched.</p>
+
+<div class="grid">
+  <div class="stat"><strong>2018–2023</strong><span>Panel years</span></div>
+  <div class="stat"><strong>SEDE × YEAR</strong><span>Primary analytical key</span></div>
+  <div class="stat"><strong>4 geographic levels</strong><span>Site, municipality, region, establishment</span></div>
+</div>
+</section>
+
+<section class="card" id="architecture">
+<h2>2. Full data-flow architecture</h2>
+<div class="flow">
+<svg viewBox="0 0 1160 790" role="img" aria-label="Data integration architecture">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L10,3 L0,6 Z" fill="#72808b"/></marker>
+    <marker id="arrowKey" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L10,3 L0,6 Z" fill="#1f5f8b"/></marker>
+  </defs>
+
+  <!-- C600 backbone -->
+  <rect class="node master" x="35" y="45" width="205" height="105" rx="12"/>
+  <text class="label" x="137" y="76" text-anchor="middle">C-600 Skeleton</text>
+  <text class="sub" x="137" y="99" text-anchor="middle">Jornadas / Nivel</text>
+  <text class="sub" x="137" y="119" text-anchor="middle">SEDE_CODIGO × YEAR</text>
+
+  <rect class="node ext" x="35" y="190" width="205" height="180" rx="12"/>
+  <text class="label" x="137" y="220" text-anchor="middle">Other C-600 modules</text>
+  <text class="sub" x="137" y="247" text-anchor="middle">Desplazados</text>
+  <text class="sub" x="137" y="268" text-anchor="middle">Limitación física</text>
+  <text class="sub" x="137" y="289" text-anchor="middle">Educación tradicional</text>
+  <text class="sub" x="137" y="310" text-anchor="middle">Educación flexible</text>
+  <text class="sub" x="137" y="331" text-anchor="middle">Etnia</text>
+  <text class="sub" x="137" y="352" text-anchor="middle">same site-year key</text>
+
+  <rect class="node master" x="360" y="125" width="245" height="210" rx="12"/>
+  <text class="label" x="482" y="158" text-anchor="middle">MASTER PANEL</text>
+  <text class="sub" x="482" y="184" text-anchor="middle">School site × year</text>
+  <text class="sub" x="482" y="208" text-anchor="middle">SEDE_CODIGO</text>
+  <text class="sub" x="482" y="228" text-anchor="middle">PERIODO_ANIO</text>
+  <text class="sub" x="482" y="250" text-anchor="middle">COD_MPIO_DANE</text>
+  <text class="sub" x="482" y="270" text-anchor="middle">COD_DPTO_DANE</text>
+  <text class="sub" x="482" y="290" text-anchor="middle">REGION_DANE</text>
+  <text class="sub" x="482" y="312" text-anchor="middle">target + predictors</text>
+
+  <path class="edge key" d="M240 100 C290 100 300 170 360 190" marker-end="url(#arrowKey)"/>
+  <path class="edge key" d="M240 280 C290 280 305 245 360 245" marker-end="url(#arrowKey)"/>
+
+  <!-- SIMAT -->
+  <rect class="node ext" x="35" y="430" width="205" height="130" rx="12"/>
+  <text class="label" x="137" y="461" text-anchor="middle">SIMAT</text>
+  <text class="sub" x="137" y="485" text-anchor="middle">Dropout</text>
+  <text class="sub" x="137" y="505" text-anchor="middle">Repetition</text>
+  <text class="sub" x="137" y="525" text-anchor="middle">municipality × year</text>
+  <text class="sub" x="137" y="545" text-anchor="middle">name + department</text>
+
+  <rect class="node ext" x="280" y="440" width="185" height="105" rx="12"/>
+  <text class="label" x="372" y="473" text-anchor="middle">DIVIPOLA</text>
+  <text class="sub" x="372" y="497" text-anchor="middle">Municipality name</text>
+  <text class="sub" x="372" y="517" text-anchor="middle">+ department</text>
+  <text class="sub" x="372" y="537" text-anchor="middle">→ COD_MPIO_DANE</text>
+
+  <path class="edge enrich" d="M240 495 L280 495" marker-end="url(#arrow)"/>
+  <path class="edge key" d="M465 495 C540 495 550 350 520 335" marker-end="url(#arrowKey)"/>
+
+  <!-- IPM -->
+  <rect class="node ext" x="710" y="60" width="205" height="125" rx="12"/>
+  <text class="label" x="812" y="91" text-anchor="middle">IPM</text>
+  <text class="sub" x="812" y="116" text-anchor="middle">Household poverty</text>
+  <text class="sub" x="812" y="136" text-anchor="middle">weighted by FEX_C</text>
+  <text class="sub" x="812" y="156" text-anchor="middle">region × year</text>
+  <text class="sub" x="812" y="176" text-anchor="middle">15 deprivation indicators</text>
+  <path class="edge enrich" d="M710 155 C660 180 640 215 605 220" marker-end="url(#arrow)"/>
+
+  <!-- PDET ZOMAC -->
+  <rect class="node ext" x="710" y="235" width="205" height="125" rx="12"/>
+  <text class="label" x="812" y="266" text-anchor="middle">PDET / ZOMAC</text>
+  <text class="sub" x="812" y="291" text-anchor="middle">municipality lists</text>
+  <text class="sub" x="812" y="311" text-anchor="middle">COD DANE → 5 digits</text>
+  <text class="sub" x="812" y="331" text-anchor="middle">→ binary flags</text>
+  <text class="sub" x="812" y="351" text-anchor="middle">municipality-level</text>
+  <path class="edge enrich" d="M710 300 C650 300 635 290 605 285" marker-end="url(#arrow)"/>
+
+  <!-- ICFES -->
+  <rect class="node ext" x="710" y="410" width="205" height="180" rx="12"/>
+  <text class="label" x="812" y="442" text-anchor="middle">ICFES Summary</text>
+  <text class="sub" x="812" y="468" text-anchor="middle">Step 1: site × year</text>
+  <text class="sub" x="812" y="488" text-anchor="middle">COLE_COD_DANE_SEDE</text>
+  <text class="sub" x="812" y="518" text-anchor="middle">Step 2: establishment × year</text>
+  <text class="sub" x="812" y="538" text-anchor="middle">COLE_COD_DANE_ESTABLECIMIENTO</text>
+  <text class="sub" x="812" y="568" text-anchor="middle">weighted/mean aggregation</text>
+  <path class="edge key" d="M710 470 C650 450 630 335 605 300" marker-end="url(#arrowKey)"/>
+
+  <!-- Derived -->
+  <rect class="node master" x="360" y="610" width="245" height="120" rx="12"/>
+  <text class="label" x="482" y="642" text-anchor="middle">Derived analytical features</text>
+  <text class="sub" x="482" y="666" text-anchor="middle">lags / moving average</text>
+  <text class="sub" x="482" y="686" text-anchor="middle">enrollment dynamics</text>
+  <text class="sub" x="482" y="706" text-anchor="middle">vulnerability / gender / pandemic flags</text>
+  <path class="edge key" d="M482 335 L482 610" marker-end="url(#arrowKey)"/>
+</svg>
+</div>
+<div class="legend">
+  <span><i class="dot master"></i> Master/derived panel</span>
+  <span><i class="dot ext"></i> External source</span>
+  <span><i class="dot enrich"></i> Geographic/enrichment relationship</span>
+</div>
+</section>
+
+<section class="card" id="joins">
+<h2>3. Join map: database-by-database</h2>
+<table>
+<thead><tr><th>Source</th><th>Granularity</th><th>Join key / mechanism</th><th>Join type</th><th>What enters the panel</th></tr></thead>
+<tbody>
+<tr><td><strong>C-600 Skeleton</strong></td><td>School site × year</td><td><code>SEDE_CODIGO + PERIODO_ANIO</code></td><td>Builds backbone</td><td>Total enrollment and DANE code candidates</td></tr>
+<tr><td><strong>C-600: Desplazados</strong></td><td>School site × year</td><td><code>SEDE_CODIGO + PERIODO_ANIO</code></td><td>Left merge</td><td>Male, female and total counts</td></tr>
+<tr><td><strong>C-600: Limitación física</strong></td><td>School site × year</td><td><code>SEDE_CODIGO + PERIODO_ANIO</code></td><td>Left merge</td><td>Male, female and total counts</td></tr>
+<tr><td><strong>C-600: Ed. tradicional</strong></td><td>School site × year</td><td><code>SEDE_CODIGO + PERIODO_ANIO</code></td><td>Left merge</td><td>Male, female and total counts</td></tr>
+<tr><td><strong>C-600: Ed. flexible</strong></td><td>School site × year</td><td><code>SEDE_CODIGO + PERIODO_ANIO</code></td><td>Left merge</td><td>Male, female and total counts</td></tr>
+<tr><td><strong>C-600: Etnia</strong></td><td>School site × year</td><td><code>SEDE_CODIGO + PERIODO_ANIO</code></td><td>Left merge</td><td>Male, female and total counts</td></tr>
+<tr><td><strong>SIMAT — Dropout</strong></td><td>Municipality × year</td><td>Names + department → DIVIPOLA → <code>COD_MPIO_DANE</code>; then <code>COD_MPIO_DANE + PERIODO_ANIO</code></td><td>Left merge</td><td><code>TASA_DESERCION_MPIO</code></td></tr>
+<tr><td><strong>SIMAT — Repetition</strong></td><td>Municipality × year</td><td>Same as dropout</td><td>Left merge</td><td><code>TASA_REPITENCIA_MPIO</code></td></tr>
+<tr><td><strong>IPM</strong></td><td>Region × year</td><td>Department code → <code>REGION_DANE</code>; then <code>REGION_DANE + PERIODO_ANIO</code></td><td>Left merge</td><td>Weighted regional IPM/deprivation indicators</td></tr>
+<tr><td><strong>PDET</strong></td><td>Municipality</td><td><code>COD DANE → COD_MPIO_DANE</code></td><td>Many-to-one merge</td><td><code>FLAG_PDET</code></td></tr>
+<tr><td><strong>ZOMAC</strong></td><td>Municipality</td><td><code>COD DANE → COD_MPIO_DANE</code></td><td>Many-to-one merge</td><td><code>FLAG_ZOMAC</code></td></tr>
+<tr><td><strong>ICFES</strong></td><td>School site × year; fallback establishment × year</td><td>Normalized 12-digit DANE code + year</td><td>Two-step left merge</td><td>Scores, student count, socioeconomic and student-background measures</td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="card" id="sources">
+<h2>4. Source-specific integration logic</h2>
+
+<h3>C-600: construction of the school-year backbone</h3>
+<p>The pipeline searches the C-600 files for the Jornada/Nivel skeleton for each year from 2018 to 2023. <code>SEDE_CODIGO</code> is standardized to a 12-digit string, and enrollment is converted to numeric form. If a total enrollment field is unavailable, the code constructs total enrollment by summing available male and female enrollment fields.</p>
+<p>The raw records are aggregated to <code>SEDE_CODIGO × PERIODO_ANIO × COD_MPIO_DANE × COD_DPTO_DANE</code>. The resulting <strong>SEDE × YEAR</strong> key is explicitly checked for duplicates before the master panel is created.</p>
+
+<h3>Remaining C-600 modules</h3>
+<p>Each additional C-600 source is read separately for all panel years, standardized on <code>SEDE_CODIGO</code>, converted to numeric counts, aggregated to site-year, and left-merged into the backbone. Male and female counts are retained, and a total is calculated for each module.</p>
+
+<h3>SIMAT + DIVIPOLA: municipality-level outcomes</h3>
+<p>SIMAT is restricted to <strong>municipality territory</strong>, <strong>official-sector observations</strong>, and the panel years. Municipality and department names are normalized by upper-casing, removing accents, trimming whitespace, and collapsing repeated spaces.</p>
+<p>Dropout and repetition records are aggregated to municipality-year. Rates are calculated as <strong>weighted averages using the SIMAT TOTAL as the weight</strong>. DIVIPOLA is then used as the official geographic crosswalk: standardized municipality + department names are matched to obtain the five-digit <code>COD_MPIO_DANE</code>. These municipality-year indicators are finally attached to every school site in the corresponding municipality and year.</p>
+
+<h3>IPM: regional context</h3>
+<p>IPM household files are loaded for each panel year. The numeric region identifier is mapped to a named DANE region. Available deprivation variables are aggregated by <strong>region × year</strong> using <code>FEX_C</code> as the household weight. The school panel receives the same regional measures through a department-to-region mapping and the key <code>REGION_DANE × PERIODO_ANIO</code>.</p>
+
+<h3>PDET and ZOMAC: municipality enrichment</h3>
+<p>Both sources explicitly use <code>COD DANE</code>. Codes are converted to five-digit strings, invalid codes are removed, duplicates are collapsed, and a binary municipality flag is created. These flags are then merged into the school panel using <code>COD_MPIO_DANE</code>.</p>
+
+<h3>ICFES: direct match plus establishment-level rescue</h3>
+<p>ICFES DANE identifiers are normalized to exactly 12 digits. The panel's school code is also normalized, including the special handling required when the panel code appears with an extra leading digit.</p>
+<p><strong>Step 1:</strong> ICFES is matched directly using <code>school-site code × year</code>. <strong>Step 2:</strong> observations that remain without a global ICFES score are rescued using the establishment-level table. Establishment-level aggregation sums student counts and averages the other available measures across sites.</p>
+</section>
+
+<section class="card" id="keys">
+<h2>5. Key hierarchy and geographic relationships</h2>
+<table>
+<thead><tr><th>Level</th><th>Identifier</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td><strong>School site</strong></td><td><code>SEDE_CODIGO</code></td><td>Primary institutional identifier used to build the longitudinal panel.</td></tr>
+<tr><td><strong>School-year</strong></td><td><code>SEDE_CODIGO × PERIODO_ANIO</code></td><td>Final primary key; uniqueness is explicitly validated.</td></tr>
+<tr><td><strong>Municipality</strong></td><td><code>COD_MPIO_DANE</code></td><td>Connects school sites to SIMAT, PDET and ZOMAC.</td></tr>
+<tr><td><strong>Department</strong></td><td><code>COD_DPTO_DANE</code></td><td>Used for geographic validation and mapping to IPM regions.</td></tr>
+<tr><td><strong>Region</strong></td><td><code>REGION_DANE</code></td><td>Connects school sites to regional IPM measures.</td></tr>
+<tr><td><strong>Establishment</strong></td><td>Normalized 12-digit establishment DANE code</td><td>Secondary ICFES matching level used only for unmatched site-year observations.</td></tr>
+</tbody>
+</table>
+
+<div class="callout warn">
+<strong>Important geographic diagnostic.</strong> The code explicitly compares two interpretations of the C-600 DANE code: the current construction (<code>SEDE_CODIGO[1:6]</code> for municipality and <code>[1:3]</code> for department) versus the standard first-five/first-two-digit construction. Both alternatives are validated against DIVIPOLA, PDET and ZOMAC before the current version is retained. This is a diagnostic step, not an implicit correction.
+</div>
+</section>
+
+<section class="card" id="features">
+<h2>6. Variables created after the joins</h2>
+<table>
+<thead><tr><th>Feature family</th><th>Construction</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td>Composition proportions</td><td>Group total ÷ total enrollment, clipped to [0,1]</td><td>Measures the share of students associated with each C-600 characteristic.</td></tr>
+<tr><td>Gender index</td><td>Sum of available female counts across selected C-600 groups ÷ enrollment</td><td>Captures a composite female-share measure.</td></tr>
+<tr><td>Vulnerability index</td><td>Weighted sum of selected composition proportions</td><td>Weights: displaced 2.0; physical limitation 1.5; ethnicity 1.0; flexible education 0.5.</td></tr>
+<tr><td>Pandemic flag</td><td><code>PERIODO_ANIO == 2020</code></td><td>Identifies the 2020 observation.</td></tr>
+<tr><td>Enrollment change</td><td>Year-to-year difference within site</td><td>Captures absolute enrollment dynamics.</td></tr>
+<tr><td>Enrollment % change</td><td>Enrollment change ÷ previous-year enrollment</td><td>Captures relative enrollment dynamics.</td></tr>
+<tr><td>Dropout lag</td><td>Previous year's municipality dropout rate</td><td>Prevents contemporaneous target leakage in lagged features.</td></tr>
+<tr><td>Repetition lag</td><td>Previous year's municipality repetition rate</td><td>Temporal predictor.</td></tr>
+<tr><td>Two-year lagged dropout MA</td><td>Shift one year, then rolling mean over two observations</td><td>For 2023, uses 2021 and 2022—not 2023.</td></tr>
+<tr><td>Enrollment decline flag</td><td>Two consecutive negative enrollment changes</td><td>Identifies sustained enrollment decline.</td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="card" id="validation">
+<h2>7. Validation and quality controls</h2>
+<ul>
+<li><strong>Primary-key validation:</strong> duplicate <code>SEDE_CODIGO × PERIODO_ANIO</code> observations trigger an error.</li>
+<li><strong>Period validation:</strong> observations outside 2018–2023 trigger an error.</li>
+<li><strong>Geographic validation:</strong> candidate municipality codes are compared with DIVIPOLA, PDET and ZOMAC code sets.</li>
+<li><strong>Coverage diagnostics:</strong> coverage is reported for SIMAT, IPM, ICFES and selected variables, including coverage by year and by TRAIN/TEST sample.</li>
+<li><strong>Missingness report:</strong> the final diagnostic table reports null counts, null percentages, means, minima and maxima for variables.</li>
+<li><strong>Target diagnostics:</strong> Pearson correlations with municipality dropout and lag-1 autocorrelation are calculated.</li>
+<li><strong>2023 test diagnostics:</strong> the code separately reports 2023 row count, unique sites, target coverage and lag-1 coverage.</li>
+</ul>
+
+<div class="callout">
+<strong>Train/test design:</strong> 2018–2022 are classified as <code>TRAIN</code>, while 2023 is classified as <code>TEST</code>. Temporal features are constructed within each school site after sorting by site and year.
+</div>
+</section>
+
+<section class="card">
+<h2>8. Final analytical structure</h2>
+<p>The resulting dataset is organized into logical blocks: <strong>keys and geography</strong>, <strong>target variables</strong>, <strong>temporal lags</strong>, <strong>enrollment dynamics</strong>, <strong>C-600 composition and vulnerability</strong>, <strong>ICFES variables</strong>, <strong>IPM regional context</strong>, and <strong>PDET/ZOMAC enrichment</strong>.</p>
+<p>The final pipeline exports the master panel in both Parquet and CSV formats and produces an Excel diagnostic workbook containing completeness, correlations, coverage by year, train/test coverage, descriptive statistics, unmatched SIMAT observations and a 2023 sample.</p>
+</section>
+
+<footer>
+Prepared directly from the final integration pipeline supplied for review. The diagram and descriptions reflect the implemented join logic and documented diagnostics in the code.
+</footer>
+</div>
+</body>
+</html>
