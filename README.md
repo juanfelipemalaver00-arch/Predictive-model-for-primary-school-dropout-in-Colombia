@@ -39,52 +39,49 @@ The target variable is not directly available at the site level, as SIMAT only p
 The ultimate goal goes beyond optimizing predictive metrics like AUC; it aims to generate an **actionable site risk ranking**[cite: 1]. Education officials can easily interpret this ranking to prioritize interventions, supported by natural language explanations detailing why a specific site is at risk[cite: 1].
 
 ---
+```mermaid
+graph TD
+    DATA["📁 Data /"]
 
-## 3. Data Architecture & Sources
+    subgraph RAW ["📁 Raw / (Datos Originales - Solo Lectura)"]
+        direction TB
+        C600["📂 C-600 / (Censo DANE)<br/>└─ 2018–2023/<br/>   ├─ Desplazados_YYYY.csv<br/>   ├─ Limitacion_fisica_YYYY.csv<br/>   ├─ Ed_tradicional_YYYY.csv<br/>   ├─ Ed_Flexible_YYYY.csv<br/>   ├─ Jornadas_nivel_YYYY.csv<br/>   └─ Etnia_YYYY.csv"]
+        
+        SIMAT["📂 SIMAT / (Tasas MEN)<br/>├─ Tasa_Desercion_intra.xlsx<br/>├─ Tasa_repitencia_intra.xlsx<br/>└─ DIVIPOLA.csv"]
+        
+        IPM["📂 IPM / (Pobreza Multidimensional)<br/>└─ IPM_Hogares_YYYY.csv"]
+        
+        ENRICH["📂 Enrichment / (Atributos Territoriales)<br/>├─ Icfes_Resumen.csv<br/>├─ PDET_municipios.xlsx<br/>├─ ZOMAC_municipios.xlsx<br/>└─ Terridata_completo.csv"]
+    end
 
-### Folder Structure
+    subgraph PROC ["📁 Processed / (Salidas del Pipeline)"]
+        direction TB
+        PROCDETAIL["📄 panel_maestro.parquet<br/>📄 panel_maestro.csv<br/>📄 Diccionario_de_Datos_Panel_Maestro.xlsx"]
+    end
 
-Data/
-├── Raw/                                # Original raw data — never edit directly[cite: 1]
-│   ├── C-600/                          # Formal Education Census (DANE) — site level[cite: 1]
-│   │   ├── 2018/ … 2023/               # Annual directory structure (2018–2023)[cite: 1]
-│   │   │   ├── Desplazados_YYYY.csv[cite: 1]
-│   │   │   ├── Limitacion_fisica_YYYY.csv[cite: 1]
-│   │   │   ├── Ed_tradicional_YYYY.csv[cite: 1]
-│   │   │   ├── Ed_Flexible_YYYY.csv[cite: 1]
-│   │   │   ├── Jornadas_nivel_YYYY.csv[cite: 1]
-│   │   │   └── Etnia_YYYY.csv[cite: 1]
-│   ├── SIMAT/                          # Municipal rates (MEN)[cite: 1]
-│   │   ├── Tasa_Desercion_intra_Departamentos.xlsx[cite: 1]
-│   │   ├── Tasa_repitencia_intra_Departamentos.xlsx[cite: 1]
-│   │   └── DIVIPOLA.csv               # Lookup table: Municipality name → DANE code[cite: 1]
-│   ├── IPM/                            # Multidimensional Poverty Index (DANE-ECV / Terridata)[cite: 1]
-│   │   └── IPM_Hogares_YYYY.csv[cite: 1]
-│   └── Enrichment/                     # Additional territorial features — all available years[cite: 1]
-│       ├── Icfes_Resumen.csv           # Ready — site level × year[cite: 1]
-│       ├── PDET_municipios.xlsx        # Ready — 170 municipalities with DANE code[cite: 1]
-│       ├── ZOMAC_municipios.xlsx       # Ready — 344 municipalities with DANE code[cite: 1]
-│       └── Terridata_completo.csv      # Ready — multi-indicator municipal panel (DNP)[cite: 1]
-├── Processed/                          # Pipeline outputs (generated programmatically)[cite: 1]
-│   ├── panel_maestro.parquet[cite: 1]
-│   ├── panel_maestro.csv[cite: 1]
-│   └── Diccionario_de_Datos_Panel_Maestro.xlsx[cite: 1]
-└── External/
-└── DIVIPOLA_referencia.csv[cite: 1]
+    subgraph EXT ["📁 External / (Tablas de Referencia)"]
+        direction TB
+        EXTDETAIL["📄 DIVIPOLA_referencia.csv"]
+    end
 
----
+    DATA --> RAW
+    DATA --> PROC
+    DATA --> EXT
 
-### Official Data Sources & Direct Links
+    %% Clases de Estilo
+    classDef root fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f8fafc,font-weight:bold;
+    classDef rawGroup fill:#0f172a,stroke:#38bdf8,stroke-width:1px,color:#e2e8f0;
+    classDef procGroup fill:#0f172a,stroke:#34d399,stroke-width:1px,color:#e2e8f0;
+    classDef extGroup fill:#0f172a,stroke:#fbbf24,stroke-width:1px,color:#e2e8f0;
+    classDef nodeBox fill:#1e293b,stroke:#334155,color:#cbd5e1;
 
-| Source / Dataset | Entity | Official URL / Access Link | Description & Availability Notes |
-|---|---|---|---|
-| **DANE C-600 (Educación Formal)** | DANE | https://microdatos.dane.gov.co/index.php/catalog/834/get-microdata | Primary site-level census covering demographics, vulnerability, and educational models (2018–2023). |
-| **MEN SINEB (Deserción y Repitencia)** | Mineducación | http://bi.mineducacion.gov.co:8380/eportal/web/sineb/22.-tasa-de-desercion-intra-anual | Municipal intra-annual dropout and repetition rates. Data currently covers up to 2023. |
-| **DataIcfes (Saber 11°)** | ICFES | https://bitly.ws/3f3YC | Site-level academic results, socio-economic index (INSE), connectivity, and student travel metrics. |
-| **Terridata & IPM 2024** | DNP / DANE | https://www.datos.gov.co/dataset/Indice-de-Pobreza-Multidimensional-IPM-2024/ntk3-fdqa/about_data | Municipal Multidimensional Poverty Index (IPM) dimensions (school non-attendance, child labor, housing, etc.). |
-| **Municipios PDET** | ART / FINAGRO | https://www.finagro.com.co/sites/default/files/documents/2022-02/ANEXO%20MUNICIPIOS%20PDET.xlsx | List of 170 priority Development Programs with a Territorial Focus municipalities. |
-| **Municipios ZOMAC** | MinHacienda / FINAGRO | https://www.finagro.com.co/sites/default/files/documents/2022-02/ANEXO%20MUNICIPIOS%20ZOMAC.xlsx | List of 344 conflict-affected municipalities. |
-| **DIVIPOLA** | DANE / Datos Abiertos | https://www.datos.gov.co/api/views/gdxc-w37w/rows.csv?accessType=DOWNLOAD | Standardized geographic coding for Colombian municipalities (5-digit) and departments (2-digit). |
+    %% Aplicación de estilos
+    class DATA root;
+    class RAW rawGroup;
+    class PROC procGroup;
+    class EXT extGroup;
+    class C600,SIMAT,IPM,ENRICH,PROCDETAIL,EXTDETAIL nodeBox;
+```
 
 ---
 
