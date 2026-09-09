@@ -8,7 +8,183 @@
 
 ## 1. Problem Statement & Motivation
 
+In Colombia, the intra-annual school dropo# Project Structure — Early School Dropout in Colombia
+
+> **Master's in Business Analytics** · Universidad del Rosario
+> Author: Juan Felipe Malaver
+> Methodology: CRISP-DM · Period: 2018–2023
+
+---
+
+## 1. Problem Statement & Motivation
+
 In Colombia, the intra-annual school dropout rate in the public sector averages between 3% and 5% nationally. However, regional disparities are extreme: rural municipalities, conflict zones, or areas with high geographical dispersion can experience dropout rates exceeding 20%. When students leave the school system mid-year, Secretariats of Education usually find out too late to intervene. This results in lost public funds due to misallocated resources and leaves thousands of young people trapped in poverty, unable to reach their full potential or contribute to society.
+
+The issue is not a lack of data. The Colombian government has systematically recorded campus-level enrollment, schedules, educational levels, and special populations for years through the C-600 census and the SIMAT system. The real problem is that this information has never been integrated into a system capable of **anticipating** dropout risk before abandonment occurs.
+
+This project builds that predictive system. The final product is an **early warning model** that predicts which educational sites are at high risk of elevated dropout rates in the following year and identifies the underlying causes. This tool enables Colombia's 97 Certified Secretariats of Education to target proactive interventions efficiently, combining predictive risk scoring with actionable, data-driven recommendations for site-level intervention.
+
+The three core research questions guiding this project are:
+
+1. Which educational sites face the highest risk of student dropout next year?
+2. Which factors explain this risk, and to what extent?
+3. Is the consolidated model equally accurate for school sites serving vulnerable populations (victims of armed conflict, ethnic minorities, students with disabilities)?
+
+---
+
+## 2. Target Variable & Project Scope
+
+| Dimension | Decision |
+|---|---|
+| **Unit of Analysis** | Educational site × year (`SEDE_CODIGO` × `PERIODO_ANIO`) |
+| **Target Variable** | Municipal intra-annual dropout rate imputed to each school site (`TASA_DESERCION_MPIO`) |
+| **Problem Type** | Binary classification (High / Low Risk) — threshold defined with advisor |
+| **Training Window** | 2018–2022 (`SAMPLE = TRAIN`) |
+| **Test Window** | 2023 (`SAMPLE = TEST`) |
+| **Out-of-Time Validation** | 2024 (holdout — pending SINEB/ICFES publication as of Sept 2026) |
+| **Candidate Algorithms** | Logistic Regression (baseline) · Random Forest · XGBoost / LightGBM |
+| **Feature Space** | 61 variables across 8 thematic domains |
+
+The target variable is not directly available at the site level: SIMAT only publishes dropout rates aggregated at the municipal level. To address this, the project applies **homoscedastic imputation** — assigning the municipal rate to all educational sites within the same municipality and year. For municipalities without a municipal-level rate (primarily Amazonia and Orinoquía departments), a departmental average fallback is applied. Both assumptions are documented as project limitations.
+
+For Bogotá, the C-600 assigns locality-level codes (`11xxx`) to sites, but SIMAT reports one unified rate under code `11001`. All Bogotá locality codes are remapped to `11001` prior to the SIMAT join. The legacy Putumayo code `83` present in some C-600 records is remapped to the official DANE code `86` before any join.
+
+The ultimate goal goes beyond optimizing AUC: it aims to generate an **actionable site risk ranking** that education officials can interpret and act on, supported by natural language explanations of why a specific site is flagged as high risk.
+
+---
+
+## 3. Data Architecture
+
+```
+Data/
+├── Raw/                                    # Original raw data — never edit directly
+│   ├── C-600/                              # Formal Education Census (DANE) — site level
+│   │   ├── 2018/ … 2023/                   # One subfolder per year
+│   │   │   ├── Desplazados_YYYY.csv
+│   │   │   ├── Limitacion_fisica_YYYY.csv
+│   │   │   ├── Ed_tradicional_YYYY.csv
+│   │   │   ├── Ed_Flexible_YYYY.csv
+│   │   │   ├── Jornadas_nivel_YYYY.csv     ← skeleton of the panel
+│   │   │   └── Etnia_YYYY.csv
+│   ├── SIMAT/                              # Municipal rates (MEN)
+│   │   ├── Tasa_Desercion_intra_Departamentos.xlsx
+│   │   ├── Tasa_repitencia_intra_Departamentos.xlsx
+│   │   └── DIVIPOLA.csv                   # Municipality name → DANE code lookup
+│   ├── IPM/                               # Multidimensional Poverty Index (DANE-ECV)
+│   │   └── IPM_Hogares_YYYY.csv           # 2018–2023
+│   │                                      # sep=";" for 2018–2020 | sep="," for 2021–2023
+│   └── Enrichment/
+│       ├── Icfes_Resumen.csv              # Aggregated from student-level DataIcfes files
+│       ├── PDET_municipios.xlsx           # 170 PDET municipalities with DANE code
+│       └── ZOMAC_municipios.xlsx          # 344 ZOMAC municipalities with DANE code
+├── Processed/
+│   ├── panel_maestro.parquet              # Primary panel — 319,609 rows × 61 cols
+│   ├── panel_maestro.csv
+│   └── diagnostico_panel.xlsx
+└── External/
+    └── DIVIPOLA_referencia.csv
+```
+
+---
+
+## 4. Feature Domains (61 Variables)
+
+| # | Domain | Variables | Level | Source |
+|---|---|---|---|---|
+| 1 | Identification & Geography | 6 | Site / Municipal / Dept | DANE DIVIPOLA |
+| 2 | Municipal Rates & Temporal Features | 5 | Municipality | MEN SINEB |
+| 3 | Enrollment Dynamics | 5 | Site | DANE C-600 |
+| 4 | Population Characterization | 15 | Site | DANE C-600 |
+| 5 | Proportions & Synthetic Indices | 7 | Site | Calculated (C-600) |
+| 6 | ICFES Saber 11° Performance | 13 + 1 flag | Site | DataIcfes |
+| 7 | Multidimensional Poverty (IPM) | 16 | Region (9 DANE macro-regions) | DANE ECV |
+| 8 | Territorial & Conflict Flags | 2 | Municipality | FINAGRO / ART / DIAN |
+
+**Domain 1 — Identification & Geography**
+`SEDE_CODIGO`, `PERIODO_ANIO`, `SAMPLE`, `COD_MPIO_DANE`, `COD_DPTO_DANE`, `REGION_DANE`
+
+**Domain 2 — Municipal Rates & Temporal Features**
+`TASA_DESERCION_MPIO`, `TASA_REPITENCIA_MPIO`, `DESERCION_LAG1`, `REPITENCIA_LAG1`, `DESERCION_MA2_LAG`
+Coverage: 95.6% municipal match. Remaining 4.4% filled with departmental average fallback.
+
+**Domain 3 — Enrollment Dynamics**
+`MATRICULA_TOTAL`, `FLAG_PANDEMIA`, `MATRICULA_DELTA`, `MATRICULA_PCT_CAMBIO`, `FLAG_DECLIVE_MATRICULA`
+`FLAG_PANDEMIA = 1` for 2020. Decision to include/exclude from training pending advisor.
+
+**Domain 4 — Population Characterization (15 variables)**
+Counts by sex and total for displaced students (`DESPLAZADOS_*`), students with disabilities (`LIMITACION_*`), traditional model (`TRADICIONAL_*`), flexible model (`FLEXIBLE_*`), ethnic groups (`ETNIA_*`).
+All count columns filled with 0 where no record exists for that site-year.
+
+**Domain 5 — Proportions & Synthetic Indices (7 variables)**
+`PROP_DESPLAZADOS`, `PROP_LIMITACION`, `PROP_TRADICIONAL`, `PROP_FLEXIBLE`, `PROP_ETNIA`, `IDX_FEMINIDAD`, `INDICE_VULNERABILIDAD`
+`INDICE_VULNERABILIDAD` = Desplazados×2 + Limitación×1.5 + Etnia×1 + Flexible×0.5.
+
+**Domain 6 — ICFES Saber 11° (13 variables + 1 flag)**
+`ICFES_CANT_ESTUDIANTES`, `ICFES_PROM_PUNT_GLOBAL`, `ICFES_PROM_LECTURA`, `ICFES_PROM_MATEMATICAS`, `ICFES_PROM_CIENCIAS`, `ICFES_PROM_SOCIALES`, `ICFES_PROM_INGLES`, `ICFES_PROM_INSE`, `ICFES_PCT_ESTRATO_1_2`, `ICFES_PCT_INTERNET`, `ICFES_PCT_COMPUTADOR`, `ICFES_PCT_DESPLAZACOLEGIO`, `ICFES_PCT_HORASTRABNOREMU`
+`TIENE_GRADO_11`: 1 if site has ICFES records for that year, 0 otherwise.
+Coverage is partial by design — only sites with Grade 11 appear in Saber 11° data.
+
+**Domain 7 — Multidimensional Poverty IPM (16 variables)**
+`IPM_INASISTENCIA_ESCOLAR`, `IPM_REZAGO_ESCOLAR`, `IPM_TRABAJO_INFANTIL`, `IPM_HACINAMIENTO`, `IPM_EMPLEO_FORMAL`, `IPM_ALFABETISMO`, `IPM_LOGRO_EDUCATIVO`, `IPM_ASEGURAMIENTO_SALUD`, `IPM_BARRERAS_ACCESO_SALUD`, `IPM_PAREDES`, `IPM_PISOS`, `IPM_ALCANTARILLADO`, `IPM_ACUEDUCTO`, `IPM_DESEMPLEO_LARGA_DURACION`, `IPM_ATENCION_INTEGRAL`, `IPM_IPM`
+Joined via `COD_DPTO_DANE → REGION_DANE`. All 33 departments mapped. Coverage: 96.7% all years.
+
+**Domain 8 — Territorial & Conflict Flags (2 variables)**
+`FLAG_PDET`: 72,484 sede-years in 170 post-peace-agreement priority municipalities.
+`FLAG_ZOMAC`: 110,734 sede-years in 344 conflict-affected municipalities.
+
+---
+
+## 5. Key Technical Notes
+
+### SEDE_CODIGO Format
+The C-600 assigns a 13-digit code with a leading `1` prefix not present in the standard DANE code.
+- `COD_MPIO_DANE` = `SEDE_CODIGO[1:6]` (5-digit municipal DANE code)
+- `COD_DPTO_DANE` = `SEDE_CODIGO[1:3]` (2-digit department code)
+
+### Join Edge Cases & Resolutions
+
+| Case | Cause | Resolution |
+|---|---|---|
+| Bogotá localities `11102`–`11850` | C-600 uses locality codes; SIMAT only reports `11001` | Remapped to `11001` before SIMAT join |
+| Putumayo `83xxx` codes | Legacy internal C-600 code; official DANE code is `86` | Remapped `83→86` in pipeline |
+| Amazonia / Orinoquía municipalities | SIMAT does not publish municipal rates for very small municipalities | Departmental average applied as fallback |
+| San Andrés / Providencia | `SAN ANDRES` appears in 3 departments | Disambiguated by `DEPARTAMENTO_STD` containing `ARCHIPIELAGO` |
+| Cali | SIMAT uses `"SANTIAGO DE CALI"`, DIVIPOLA uses `"CALI"` | Manual name correction applied before join |
+
+### IPM File Separator
+IPM files 2018–2020 use `sep=";"`. Files 2021–2023 use `sep=","`. The pipeline auto-detects the separator.
+
+---
+
+## 6. Data Sources
+
+| Source | File | URL |
+|---|---|---|
+| DANE C-600 | `C-600/YYYY/*.csv` | https://microdatos.dane.gov.co/index.php/catalog/834/get-microdata |
+| MEN SINEB | `SIMAT/*.xlsx` | http://bi.mineducacion.gov.co:8380/eportal/web/sineb/22.-tasa-de-desercion-intra-anual |
+| DANE IPM (ECV) | `IPM/IPM_Hogares_YYYY.csv` | https://www.datos.gov.co/dataset/Indice-de-Pobreza-Multidimensional-IPM-2024/ntk3-fdqa/about_data |
+| DataIcfes Saber 11° | `Enrichment/Icfes_Resumen.csv` | https://bitly.ws/3f3YC |
+| PDET | `Enrichment/PDET_municipios.xlsx` | https://www.finagro.com.co/sites/default/files/documents/2022-02/ANEXO%20MUNICIPIOS%20PDET.xlsx |
+| ZOMAC | `Enrichment/ZOMAC_municipios.xlsx` | https://www.finagro.com.co/sites/default/files/documents/2022-02/ANEXO%20MUNICIPIOS%20ZOMAC.xlsx |
+| DIVIPOLA | `SIMAT/DIVIPOLA.csv` | https://www.datos.gov.co/api/views/gdxc-w37w/rows.csv?accessType=DOWNLOAD |
+
+> No 2024 data available for C-600 or IPM as of September 2026.
+
+---
+
+## 7. Repository Scripts
+
+| File | Language | Purpose |
+|---|---|---|
+| `0_COD_Procesamiento_A_Exploratorio.R` | R | Full EDA — distributions, quality audit, APA figures |
+| `1_COD_Graficas_diagnostico.R` | R | Diagnostic figures for thesis document |
+| `2_COD_Agrupacion_ICFES.R` | R | Aggregates student-level ICFES raw files to site × year |
+| `3_COD_Panel_creation.ipynb` | Python | Master panel pipeline — all joins, feature engineering, export |
+| `4_COD_Diagnostico_Panel.py` | Python | Post-pipeline quality checker — coverage, joins, correlations |
+
+---
+
+*v1.3 — Updated Sept 2026 · Next update: modeling phase (E7, Nov 2026)*ut rate in the public sector averages between 3% and 5% nationally. However, regional disparities are extreme: rural municipalities, conflict zones, or areas with high geographical dispersion can experience dropout rates exceeding 20%. When students leave the school system mid-year, Secretariats of Education usually find out too late to intervene. This results in lost public funds due to misallocated resources and leaves thousands of young people trapped in poverty, unable to reach their full potential or contribute to society.
 
 The issue is not a lack of data. The Colombian government has systematically recorded campus-level enrollment, schedules, educational levels, and special populations for years through the C-600 census and the SIMAT system. The real problem is that this information has never been integrated into a system capable of **anticipating** dropout risk before abandonment occurs.
 
